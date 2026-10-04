@@ -21,7 +21,7 @@ import {
 } from "@/lib/sv-terrain";
 import { applyAtmosphere, fetchWeatherField, nearestWeather, sunLight, type Atmosphere, type WeatherCell } from "@/lib/weather-sky";
 import { TOY_GROUND, TOY_LABELS, TOY_ROADS, toyHouseImage, toyMapStyle, toyTreeImage, toyTreeSprite, PLANO_LAYERS, planoTreeImage } from "@/lib/toy-style";
-import { startFleet } from "@/lib/fleet";
+import type { FleetHandle } from "@/lib/fleet";
 
 type Imagery = "satelite" | "ortofoto";
 type Look = "plano" | "animado";
@@ -111,6 +111,9 @@ export function TerrainMap() {
   const [weather, setWeather] = useState<Atmosphere | null>(null);
   const [sun, setSun] = useState(() => sunLight(new Date(), START.lat, START.lng));
   const fieldRef = useRef<WeatherCell[] | null>(null);
+  const fleetRef = useRef<FleetHandle | null>(null);
+  const fleetOnRef = useRef(true);
+  const [fleetOn, setFleetOn] = useState(true);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -118,7 +121,7 @@ export function TerrainMap() {
     let cancelled = false;
     let map: MlMap | null = null;
     let slow = 0;
-    let stopFleet = () => {};
+    let fleet: FleetHandle | null = null;
     let bootFleet: (() => void) | null = null;
 
     (async () => {
@@ -149,6 +152,7 @@ export function TerrainMap() {
           touchPitch: true,
           touchZoomRotate: true,
           attributionControl: false,
+          canvasContextAttributes: { antialias: true },
           style: toyMapStyle(),
         });
 
@@ -212,15 +216,24 @@ export function TerrainMap() {
       map.on("idle", () => {
         if (!cancelled) map?.resize();
       });
-      const boot = () => {
-        if (cancelled || !map) return;
+      const fleetModule = import("@/lib/fleet");
+      let booting = false;
+      const boot = async () => {
+        if (cancelled || !map || fleet || booting) return;
+        booting = true;
         try {
-          const stop = startFleet(map, (element) => new ml.Marker({ element, anchor: "center" }));
-          if (!stop) return;
-          stopFleet = stop;
+          const { startFleet } = await fleetModule;
+          if (cancelled || !map || fleet) return;
+          const handle = startFleet(map);
+          if (!handle) return;
+          fleet = handle;
+          fleetRef.current = handle;
+          handle.setVisible(fleetOnRef.current);
           map.off("idle", boot);
         } catch {
           /* Las calles aún no están. Se reintenta en el siguiente idle. */
+        } finally {
+          booting = false;
         }
       };
       bootFleet = boot;
@@ -245,13 +258,19 @@ export function TerrainMap() {
       playToken.current += 1;
       if (watchRef.current != null) navigator.geolocation.clearWatch(watchRef.current);
       if (bootFleet) map?.off("idle", bootFleet);
-      stopFleet();
+      fleet?.stop();
+      fleetRef.current = null;
       markerRef.current?.remove();
       markerRef.current = null;
       map?.remove();
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    fleetOnRef.current = fleetOn;
+    fleetRef.current?.setVisible(fleetOn);
+  }, [fleetOn]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -351,7 +370,7 @@ export function TerrainMap() {
 
   const mpp = metersPerPixel(hud.lat, hud.zoom);
   const scaleMeters = niceDistance(mpp * SCALE_PX);
-  const scaleWidth = Math.max(28, Math.min(140, scaleMeters / mpp));
+  const scaleWidth = Math.round(Math.max(28, Math.min(140, scaleMeters / mpp)));
 
   function applyPreset(id: PresetId) {
     const next = PRESETS.find((item) => item.id === id);
@@ -629,6 +648,10 @@ export function TerrainMap() {
               Mapa propio
             </label>
           ) : null}
+          <label className="flex h-11 items-center gap-2 text-sm">
+            <input type="checkbox" checked={fleetOn} onChange={(event) => setFleetOn(event.target.checked)} />
+            Unidades
+          </label>
           <label className="flex h-11 items-center gap-2 text-sm">
             <input type="checkbox" checked={roadsOn} onChange={(event) => setRoadsOn(event.target.checked)} />
             Calles

@@ -47,6 +47,7 @@ export const PLANO_LAYERS = [
   "plano-residential",
   "plano-park",
   "plano-water",
+  "plano-river",
   "plano-highway-casing",
   "plano-highway",
   "plano-highway-dash",
@@ -57,9 +58,10 @@ export const PLANO_LAYERS = [
   "plano-street",
   "plano-street-dash",
   "plano-building",
-  "plano-edge",
+  "plano-roof",
   "plano-tree",
   "plano-name",
+  "plano-place",
 ] as const;
 
 export function planoTreeImage(): ImageData {
@@ -429,6 +431,7 @@ export function toyMapStyle(): StyleSpecification {
       { id: "roads", type: "raster", source: "roads", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
       { id: "labels", type: "raster", source: "labels", layout: { visibility: "none" } },
     ],
+    light: { anchor: "viewport", position: [1.3, 210, 35], color: "#e8eefc", intensity: 0.36 },
     sky: {
       "sky-color": "#0e141c",
       "horizon-color": "#1a2433",
@@ -446,6 +449,8 @@ export function toyMapStyle(): StyleSpecification {
   }
   return style;
 }
+
+const BUILDING_HEIGHT: ExpressionSpecification = ["min", 28, ["max", 7, ["to-number", ["coalesce", ["get", "render_height"], 12]]]];
 
 const HIDDEN_ON_PLANO = new Set<string>([...TOY_GROUND, ...TOY_ROADS, ...TOY_LABELS, "hillshade"]);
 
@@ -472,19 +477,31 @@ function planoStack(): LayerSpecification[] {
       type: "fill",
       source: "openmaptiles",
       "source-layer": "water",
-      paint: { "fill-color": "#1a3348" },
+      paint: { "fill-color": "#17344d" },
+    },
+    {
+      id: "plano-river",
+      type: "line",
+      source: "openmaptiles",
+      "source-layer": "waterway",
+      minzoom: 10,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#1f4664",
+        "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 10, 0.6, 14, 2.5, 18, 9],
+      },
     },
   ];
   const roads: LayerSpecification[] = [
-    line("plano-highway-casing", ["motorway", "trunk"], "#0e1520", 3, 11, 36, 7),
-    line("plano-highway", ["motorway", "trunk"], "#3d5168", 1.4, 8, 28, 7),
-    line("plano-highway-dash", ["motorway", "trunk"], "#d5e2f0", 0.4, 1.1, 2, 12, [2, 1.5]),
-    line("plano-main-casing", ["primary", "secondary"], "#101820", 1.8, 8, 28, 9),
-    line("plano-main", ["primary", "secondary"], "#324256", 0.8, 5, 20, 9),
-    line("plano-main-dash", ["primary", "secondary"], "#c5d4e4", 0.2, 0.7, 1.5, 13, [1.6, 1.4]),
-    line("plano-street-casing", ["tertiary", "minor", "service"], "#121a24", 0.8, 5, 20, 12),
-    line("plano-street", ["tertiary", "minor", "service"], "#2a3848", 0.2, 3, 14, 12),
-    line("plano-street-dash", ["tertiary", "minor", "service"], "#b7c6d6", 0, 0.4, 1.1, 15, [1.2, 1.2]),
+    line("plano-highway-casing", ["motorway", "trunk"], "#0b111a", 3, 11, 36, 7, undefined, true),
+    line("plano-highway", ["motorway", "trunk"], "#3f536b", 1.4, 8, 28, 7, undefined, true),
+    line("plano-highway-dash", ["motorway", "trunk"], "#f0c35a", 0.4, 1.1, 2, 12, [2.4, 1.6], true),
+    line("plano-main-casing", ["primary", "secondary"], "#0e151f", 1.8, 8, 28, 9, undefined, true),
+    line("plano-main", ["primary", "secondary"], "#35465c", 0.8, 5, 20, 9, undefined, true),
+    line("plano-main-dash", ["primary", "secondary"], "#d6e1ee", 0.2, 0.7, 1.5, 13, [1.8, 1.6], true),
+    line("plano-street-casing", ["tertiary", "minor", "service"], "#111821", 0.8, 5, 20, 12, undefined, true),
+    line("plano-street", ["tertiary", "minor", "service"], "#2b394b", 0.2, 3, 14, 12, undefined, true),
+    line("plano-street-dash", ["tertiary", "minor", "service"], "#a9b9cc", 0, 0.4, 1.1, 15, [1.4, 1.6], true),
   ];
   const blocks: LayerSpecification[] = [
     {
@@ -495,31 +512,26 @@ function planoStack(): LayerSpecification[] {
       minzoom: 15,
       filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
       paint: {
-        "fill-extrusion-color": "#2a3444",
-        "fill-extrusion-opacity": 0.96,
+        "fill-extrusion-color": ["interpolate", ["linear"], BUILDING_HEIGHT, 6, "#202a38", 16, "#253142", 28, "#2b3950"],
+        "fill-extrusion-opacity": 0.97,
         "fill-extrusion-vertical-gradient": true,
-        "fill-extrusion-height": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          15,
-          0,
-          15.4,
-          ["min", 28, ["max", 7, ["to-number", ["coalesce", ["get", "render_height"], 12]]]],
-        ],
+        "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 15, 0, 15.4, BUILDING_HEIGHT],
         "fill-extrusion-base": 0,
       },
     },
     {
-      id: "plano-edge",
-      type: "line",
+      id: "plano-roof",
+      type: "fill-extrusion",
       source: "openmaptiles",
       "source-layer": "building",
       minzoom: 15,
       filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
       paint: {
-        "line-color": "#5b8def",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.6, 17, 1.8],
+        "fill-extrusion-color": ["interpolate", ["linear"], BUILDING_HEIGHT, 6, "#33435a", 28, "#3e5272"],
+        "fill-extrusion-opacity": 0.97,
+        "fill-extrusion-vertical-gradient": false,
+        "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 15, 0, 15.4, ["+", BUILDING_HEIGHT, 0.6]],
+        "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 15, 0, 15.4, BUILDING_HEIGHT],
       },
     },
     {
@@ -553,6 +565,23 @@ function planoStack(): LayerSpecification[] {
       },
       paint: { "text-color": "#d5deea", "text-halo-color": "#121820", "text-halo-width": 1.2 },
     },
+    {
+      id: "plano-place",
+      type: "symbol",
+      source: "openmaptiles",
+      "source-layer": "place",
+      filter: ["match", ["get", "class"], ["city", "town", "village", "suburb", "neighbourhood", "quarter"], true, false],
+      layout: {
+        "text-field": ["coalesce", ["get", "name:es"], ["get", "name"]],
+        "text-font": ["Noto Sans Bold"],
+        "text-size": ["match", ["get", "class"], ["city", "town"], 16, 12],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.12,
+        "text-max-width": 8,
+        "text-padding": 6,
+      },
+      paint: { "text-color": "#9fb4cf", "text-halo-color": "#0e141c", "text-halo-width": 1.6 },
+    },
   ];
   return [...ground, ...roads, ...blocks];
 }
@@ -566,6 +595,7 @@ function line(
   wide: number,
   minzoom: number,
   dash?: [number, number],
+  grow = false,
 ): LayerSpecification {
   return {
     id,
@@ -577,7 +607,9 @@ function line(
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
       "line-color": color,
-      "line-width": width(thin, mid, wide),
+      "line-width": grow
+        ? ["interpolate", ["exponential", 1.4], ["zoom"], 8, thin, 12, mid, 16, wide, 18, wide * 2.6]
+        : width(thin, mid, wide),
       ...(dash ? { "line-dasharray": dash } : {}),
     },
   };
