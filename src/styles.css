@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-ink: #e8f2ec;
+  --color-muted: #93a89a;
+  --color-bg: #0c1210;
+  --color-panel: #141c18;
+  --color-panel-2: #1c2822;
+  --color-line: #2c3d34;
+  --color-amber: #f0b429;
+  --color-amber-ink: #1a1406;
+  --color-live: #ff5d3a;
+  --radius-panel: 1rem;
+  --shadow-panel: 0 16px 40px rgb(0 0 0 / 0.38);
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.needle {
+  transform: rotate(var(--needle));
+}
+
+.scale-bar {
+  width: var(--scale);
+}
+
+.map-stage.maplibregl-map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-reticle {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 1.25rem;
+  height: 1.25rem;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.map-reticle::before,
+.map-reticle::after {
+  content: "";
+  position: absolute;
+  background: var(--color-amber);
+}
+
+.map-reticle::before {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+}
+
+.map-reticle::after {
+  top: 50%;
+  left: 0;
+  height: 1px;
+  width: 100%;
+}
+
+.gps-puck {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--color-live);
+  border: 2px solid var(--color-ink);
+  box-shadow: 0 0 0 6px rgb(255 93 58 / 0.28);
+}
+
+.gps-puck-heading {
+  position: absolute;
+  left: 50%;
+  top: -0.7rem;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%) rotate(var(--needle));
+  transform-origin: center 1.35rem;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid var(--color-ink);
+}
+
+input[type="range"] {
+  appearance: none;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--color-line);
+  accent-color: var(--color-amber);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--color-amber);
+  border: 2px solid var(--color-amber-ink);
+}
+
+@media (min-width: 768px) {
+  .place-rail {
+    max-height: calc(100dvh - 14rem);
+    overflow-y: auto;
+  }
+}
+
+.place-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.weather-sky {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 100%);
+}
+
+.cotton-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.weather-drops {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.drop {
+  position: absolute;
+  top: -4%;
+  width: 5px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.95), rgb(186 214 230 / 0.55) 70%);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.35);
+  animation: drop-fall linear infinite;
+}
+
+@keyframes drop-fall {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(108vh);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .needle,
+  .gps-puck-heading,
+  .drop {
+    animation: none;
+    transition: none;
+  }
+}
+
+.fleet-unit {
+  position: relative;
+  width: 92px;
+  height: 120px;
+  pointer-events: none;
+}
+
+.fleet-tag {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 2px);
+  transform: translateX(-50%);
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: #2f6fe0;
+  color: #fff;
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: 0 8px 16px rgb(20 50 120 / 0.35);
+}
+
+.fleet-tag::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  background: #2f6fe0;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+.fleet-body {
+  display: block;
+  width: 92px;
+  height: 120px;
+  transform-origin: 50% 62%;
+}
