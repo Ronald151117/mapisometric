@@ -1,5 +1,8 @@
 import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from "maplibre-gl";
 import { DEM_TILES, ESRI_IMAGERY, ESRI_LABELS, ESRI_ROADS } from "@/lib/sv-terrain";
+import { PLANO_LIGHT, PLANO_SKY, planoLayers } from "@/lib/plano-style";
+
+export { PLANO_LABELS, PLANO_LAYERS, PLANO_ROADS, planoImage } from "@/lib/plano-style";
 
 function road(classes: string[]): FilterSpecification {
   return [
@@ -42,42 +45,6 @@ export const TOY_ROADS = [
 ];
 
 export const TOY_LABELS = ["toy-road-name", "toy-place", "toy-peak"];
-
-export const PLANO_LAYERS = [
-  "plano-residential",
-  "plano-park",
-  "plano-water",
-  "plano-highway-casing",
-  "plano-highway",
-  "plano-highway-dash",
-  "plano-main-casing",
-  "plano-main",
-  "plano-main-dash",
-  "plano-street-casing",
-  "plano-street",
-  "plano-street-dash",
-  "plano-building",
-  "plano-edge",
-  "plano-tree",
-  "plano-name",
-] as const;
-
-export function planoTreeImage(): ImageData {
-  const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 64;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Sin lienzo");
-  ctx.fillStyle = "#8fd0a4";
-  ctx.beginPath();
-  ctx.arc(32, 34, 18, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#c6ead2";
-  ctx.beginPath();
-  ctx.arc(26, 28, 7, 0, Math.PI * 2);
-  ctx.fill();
-  return ctx.getImageData(0, 0, 64, 64);
-}
 
 export function toyHouseImage(wall: string): ImageData {
   const canvas = document.createElement("canvas");
@@ -381,6 +348,12 @@ export function toyMapStyle(): StyleSpecification {
             peak("San Salvador", -89.294, 13.738),
             peak("San Vicente", -88.784, 13.595),
             peak("Chaparrastique", -88.269, 13.434),
+            peak("Cerro Verde", -89.623, 13.826),
+            peak("El Pital", -89.129, 14.382),
+            peak("Guazapa", -89.17, 13.893),
+            peak("Tecapa", -88.502, 13.494),
+            peak("Cacahuatique", -88.215, 13.79),
+            peak("Conchagua", -87.852, 13.279),
           ],
         },
       },
@@ -425,19 +398,12 @@ export function toyMapStyle(): StyleSpecification {
         paint: { "fill-color": "#07101c", "fill-opacity": 0 },
       },
       ...labels,
-      ...planoStack(),
+      ...planoLayers({ source: "openmaptiles", peaksSource: "peaks" }),
       { id: "roads", type: "raster", source: "roads", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
       { id: "labels", type: "raster", source: "labels", layout: { visibility: "none" } },
     ],
-    sky: {
-      "sky-color": "#0e141c",
-      "horizon-color": "#1a2433",
-      "fog-color": "#121820",
-      "sky-horizon-blend": 0.7,
-      "horizon-fog-blend": 0.35,
-      "fog-ground-blend": 0.08,
-      "atmosphere-blend": 0.35,
-    },
+    sky: PLANO_SKY,
+    light: PLANO_LIGHT,
   };
   for (const layer of style.layers) {
     if (!HIDDEN_ON_PLANO.has(layer.id)) continue;
@@ -448,114 +414,6 @@ export function toyMapStyle(): StyleSpecification {
 }
 
 const HIDDEN_ON_PLANO = new Set<string>([...TOY_GROUND, ...TOY_ROADS, ...TOY_LABELS, "hillshade"]);
-
-function planoStack(): LayerSpecification[] {
-  const ground: LayerSpecification[] = [
-    {
-      id: "plano-residential",
-      type: "fill",
-      source: "openmaptiles",
-      "source-layer": "landuse",
-      filter: ["match", ["get", "class"], ["residential", "neighbourhood", "suburb", "industrial", "commercial"], true, false],
-      paint: { "fill-color": "#1c2430", "fill-opacity": 0.95 },
-    },
-    {
-      id: "plano-park",
-      type: "fill",
-      source: "openmaptiles",
-      "source-layer": "park",
-      filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
-      paint: { "fill-color": "#1a2c28" },
-    },
-    {
-      id: "plano-water",
-      type: "fill",
-      source: "openmaptiles",
-      "source-layer": "water",
-      paint: { "fill-color": "#1a3348" },
-    },
-  ];
-  const roads: LayerSpecification[] = [
-    line("plano-highway-casing", ["motorway", "trunk"], "#0e1520", 3, 11, 36, 7),
-    line("plano-highway", ["motorway", "trunk"], "#3d5168", 1.4, 8, 28, 7),
-    line("plano-highway-dash", ["motorway", "trunk"], "#d5e2f0", 0.4, 1.1, 2, 12, [2, 1.5]),
-    line("plano-main-casing", ["primary", "secondary"], "#101820", 1.8, 8, 28, 9),
-    line("plano-main", ["primary", "secondary"], "#324256", 0.8, 5, 20, 9),
-    line("plano-main-dash", ["primary", "secondary"], "#c5d4e4", 0.2, 0.7, 1.5, 13, [1.6, 1.4]),
-    line("plano-street-casing", ["tertiary", "minor", "service"], "#121a24", 0.8, 5, 20, 12),
-    line("plano-street", ["tertiary", "minor", "service"], "#2a3848", 0.2, 3, 14, 12),
-    line("plano-street-dash", ["tertiary", "minor", "service"], "#b7c6d6", 0, 0.4, 1.1, 15, [1.2, 1.2]),
-  ];
-  const blocks: LayerSpecification[] = [
-    {
-      id: "plano-building",
-      type: "fill-extrusion",
-      source: "openmaptiles",
-      "source-layer": "building",
-      minzoom: 15,
-      filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
-      paint: {
-        "fill-extrusion-color": "#2a3444",
-        "fill-extrusion-opacity": 0.96,
-        "fill-extrusion-vertical-gradient": true,
-        "fill-extrusion-height": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          15,
-          0,
-          15.4,
-          ["min", 28, ["max", 7, ["to-number", ["coalesce", ["get", "render_height"], 12]]]],
-        ],
-        "fill-extrusion-base": 0,
-      },
-    },
-    {
-      id: "plano-edge",
-      type: "line",
-      source: "openmaptiles",
-      "source-layer": "building",
-      minzoom: 15,
-      filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
-      paint: {
-        "line-color": "#5b8def",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.6, 17, 1.8],
-      },
-    },
-    {
-      id: "plano-tree",
-      type: "symbol",
-      source: "openmaptiles",
-      "source-layer": "park",
-      minzoom: 14,
-      filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
-      layout: {
-        "icon-image": "plano-tree",
-        "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.35, 17, 0.7],
-        "icon-allow-overlap": false,
-        "icon-padding": 2,
-        "icon-pitch-alignment": "viewport",
-      },
-    },
-    {
-      id: "plano-name",
-      type: "symbol",
-      source: "openmaptiles",
-      "source-layer": "transportation_name",
-      minzoom: 15,
-      filter: ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary", "tertiary", "minor"], true, false],
-      layout: {
-        "text-field": ["coalesce", ["get", "name:es"], ["get", "name"]],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": 11,
-        "symbol-placement": "line",
-        "text-max-angle": 25,
-      },
-      paint: { "text-color": "#d5deea", "text-halo-color": "#121820", "text-halo-width": 1.2 },
-    },
-  ];
-  return [...ground, ...roads, ...blocks];
-}
 
 function line(
   id: string,

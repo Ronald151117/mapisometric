@@ -20,7 +20,8 @@ import {
   type Viewpoint,
 } from "@/lib/sv-terrain";
 import { applyAtmosphere, fetchWeatherField, nearestWeather, sunLight, type Atmosphere, type WeatherCell } from "@/lib/weather-sky";
-import { TOY_GROUND, TOY_LABELS, TOY_ROADS, toyHouseImage, toyMapStyle, toyTreeImage, toyTreeSprite, PLANO_LAYERS, planoTreeImage } from "@/lib/toy-style";
+import { TOY_GROUND, TOY_LABELS, TOY_ROADS, toyHouseImage, toyMapStyle, toyTreeImage, toyTreeSprite, PLANO_LABELS, PLANO_LAYERS, PLANO_ROADS, planoImage } from "@/lib/toy-style";
+import { PLANO_SKY } from "@/lib/plano-style";
 import type { FleetHandle } from "@/lib/fleet";
 
 type Imagery = "satelite" | "ortofoto";
@@ -189,7 +190,8 @@ export function TerrainMap() {
         if (!map || map.hasImage(event.id)) return;
         if (event.id === "toy-tree") map.addImage(event.id, toyTreeImage(), { pixelRatio: 2 });
         if (event.id === "toy-tree-icon") map.addImage(event.id, toyTreeSprite(), { pixelRatio: 2 });
-        if (event.id === "plano-tree") map.addImage(event.id, planoTreeImage(), { pixelRatio: 2 });
+        const plano = planoImage(event.id);
+        if (plano) map.addImage(event.id, plano.image, { pixelRatio: plano.pixelRatio });
         const walls: Record<string, string> = {
           "toy-house-0": "#f7c7b4",
           "toy-house-1": "#f6e3a8",
@@ -292,10 +294,10 @@ export function TerrainMap() {
     for (const id of TOY_GROUND) show(id, !plano && toyOn);
     for (const id of TOY_ROADS) show(id, !plano && toyOn && roadsOn);
     for (const id of TOY_LABELS) show(id, !plano && toyOn && labelsOn);
+    const planoRoads = new Set<string>(PLANO_ROADS);
+    const planoLabels = new Set<string>(PLANO_LABELS);
     for (const id of PLANO_LAYERS) {
-      const roadLayer = /street|highway|main/.test(id);
-      const nameLayer = id === "plano-name";
-      show(id, plano && (nameLayer ? labelsOn : roadLayer ? roadsOn : true));
+      show(id, plano && (planoLabels.has(id) ? labelsOn : planoRoads.has(id) ? roadsOn : true));
     }
     show("esri", !plano && !toyOn);
     show("roads", !plano && !toyOn && roadsOn);
@@ -343,15 +345,7 @@ export function TerrainMap() {
     const map = mapRef.current;
     if (!map || !ready) return;
     if (look === "plano") {
-      map.setSky({
-        "sky-color": "#0e141c",
-        "horizon-color": "#1a2433",
-        "fog-color": "#121820",
-        "sky-horizon-blend": 0.7,
-        "horizon-fog-blend": 0.35,
-        "fog-ground-blend": 0.08,
-        "atmosphere-blend": 0.35,
-      });
+      map.setSky(PLANO_SKY);
       return;
     }
     if (!weather) return;
